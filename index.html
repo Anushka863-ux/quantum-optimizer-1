@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quantum Lab: Shor + Route Optimization</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--ink:#14202b;--mut:#5b6b7a;--line:#dde4ea;--cl:#d1495b;--qu:#0b7a75;--ac:#3d5a80;--code:#eef3f7;--soft:#e8f4f3;--warm:#fdf1ee}
+@media (prefers-color-scheme:dark){:root{--bg:#0d141c;--card:#152130;--ink:#e6edf3;--mut:#93a4b5;--line:#26374a;--cl:#ff6b7d;--qu:#2ed3c6;--ac:#8fb0d9;--code:#0b121a;--soft:#11302f;--warm:#33202a}}
+*{box-sizing:border-box}
+html{scroll-padding-top:64px;scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 "Space Grotesk",system-ui,sans-serif;padding-bottom:env(safe-area-inset-bottom,0px)}
+nav{position:sticky;top:0;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);display:flex;gap:6px;padding:10px 16px;overflow-x:auto;z-index:5}
+nav a{color:var(--ink);text-decoration:none;white-space:nowrap;font-weight:600;font-size:14px;padding:4px 10px;border-radius:999px}
+nav a:hover{background:var(--code)}
+main{max-width:1000px;margin:0 auto;padding:12px 20px 40px}
+header.hero{padding:36px 0 8px}
+.tag{display:inline-block;font:500 12px "IBM Plex Mono",monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--qu);background:var(--soft);padding:4px 10px;border-radius:999px}
+h1{font-size:clamp(30px,5.4vw,50px);line-height:1.08;margin:14px 0 10px;letter-spacing:-.01em}
+h2{font-size:clamp(22px,3.4vw,28px);margin:0 0 6px;line-height:1.2}
+h3{margin:22px 0 6px;font-size:17px}
+p{margin:6px 0}.mut{color:var(--mut)}
+.lead{font-size:18px;color:var(--mut);max-width:760px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0 8px}
+.pc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;text-decoration:none;color:var(--ink);display:block;transition:transform .15s,border-color .15s}
+.pc:hover{transform:translateY(-2px);border-color:var(--qu)}
+.pc b{display:block;font-size:18px;margin-bottom:4px}
+.pc span{color:var(--mut);font-size:15px}
+.how{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 0;font-size:14px;color:var(--mut)}
+.how div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px;margin:24px 0}
+.num{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:var(--qu);color:#fff;font-size:15px;margin-right:10px;vertical-align:3px}
+.simple{background:var(--soft);border-radius:10px;padding:14px 18px;margin:14px 0}
+.simple strong{display:block;color:var(--qu);font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.simple ol{margin:6px 0 0;padding-left:20px}
+canvas{width:100%;max-width:100%;height:auto;border:1px solid var(--line);border-radius:8px;display:block}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0}
+button{font:inherit;font-weight:600;background:var(--ac);color:#fff;border:0;border-radius:8px;padding:9px 18px;cursor:pointer}
+button.q{background:var(--qu)}
+button:hover{filter:brightness(1.08)}
+button:disabled{opacity:.6;cursor:wait}
+button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--qu);outline-offset:2px}
+select{font:inherit;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+@media(max-width:720px){.row,.cards{grid-template-columns:1fr}section{padding:18px}}
+.cl{color:var(--cl);font-weight:600}.qu{color:var(--qu);font-weight:600}
+pre{background:var(--code);padding:14px;border-radius:8px;overflow-x:auto;font:13px/1.55 "IBM Plex Mono",monospace;margin:8px 0}
+.log{font:13px/1.65 "IBM Plex Mono",monospace;background:var(--code);padding:14px;border-radius:8px;min-height:60px;white-space:pre-wrap}
+.cap{font-size:14px;color:var(--mut);margin-top:6px}
+.warn{border-left:4px solid var(--cl);padding:10px 16px;background:var(--warm);border-radius:6px}
+.warn p{margin:8px 0}
+table{border-collapse:collapse;width:100%;font-size:15px}
+.tw{overflow-x:auto}
+td,th{border-bottom:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}
+th{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}
+footer{text-align:center;color:var(--mut);font-size:14px;padding:10px 0 30px}
+</style></head><body>
+<nav><a href="#shor">1. Shor</a><a href="#route">2. Delivery route</a><a href="#anneal">3. Annealing</a><a href="#scale">4. Summary</a><a href="#code">5. Qiskit code</a><a href="#real">6. Limitations</a></nav>
+<main>
+<header class="hero">
+<span class="tag">Quantum computing project</span>
+<h1>Quantum Lab: where classical computing breaks and quantum helps</h1>
+<p class="lead">Two hard problems, each with a live simulation. Everything runs in your browser and no quantum computer is needed. The quantum parts are simulated on a normal computer, so they only work at small sizes, but that is enough to show how they work.</p>
+<div class="cards">
+<a class="pc" href="#shor"><b>🔐 Breaking a number into primes</b><span>Multiplying 5 × 7 is easy. Going back from 35 to 5 and 7 is hard for huge numbers. Internet encryption (RSA) depends on that.</span></a>
+<a class="pc" href="#route"><b>🚚 Finding the shortest delivery route</b><span>A van must visit every shop once. Each extra shop multiplies the number of possible routes, so checking them all soon becomes impossible.</span></a>
+</div>
+<div class="how"><div>① Pick an option</div><div>② Press a button</div><div>③ Watch the chart and the log</div></div>
+</header>
+
+<section id="shor">
+<h2><span class="num">1</span>Shor’s algorithm: factoring</h2>
+<p>Problem: given N = p × q, find p and q. No fast classical method is known, and RSA security depends on this. Shor’s idea: turn factoring into <b>period finding</b>, and find the period with the quantum Fourier transform (QFT).</p>
+<div class="simple"><strong>In simple words</strong>
+Take a number a and keep multiplying it by itself, always keeping the remainder after dividing by N. The remainders repeat in a loop, like a song’s rhythm. Once you know how long that loop is (the <b>period r</b>), a little school maths (gcd) gives you the two factors. Finding the period is the hard part. A quantum computer tries every x at once, and the QFT makes the rhythm show up as tall spikes.</div>
+<div class="controls"><label>Choose N: <select id="N"><option>15</option><option>21</option><option selected>35</option><option>55</option></select></label>
+<button id="runShor" class="q">Run Shor</button></div>
+<div class="row">
+<div><h3><span class="cl">Classical</span>: trial division</h3><div class="log" id="clog"></div></div>
+<div><h3><span class="qu">Shor</span>: steps</h3><div class="log" id="slog"></div></div>
+</div>
+<h3>Step 1: f(x) = aˣ mod N repeats</h3>
+<canvas id="cfx" width="900" height="240"></canvas>
+<p class="cap">Each dot is one value of aˣ mod N. The pattern repeats every r steps. Green dots are the values left after the measurement in step 3.</p>
+<h3>Step 2: what we measure after the QFT</h3>
+<canvas id="cqft" width="900" height="240"></canvas>
+<p class="cap">Almost all the probability sits on a few spikes spaced Q/r apart. The dashed line is what a random guess would give. Measuring lands on a spike, and from its position we work out r.</p>
+<h3>Why factoring is hard: work needed as the number gets bigger</h3>
+<canvas id="cfac" width="900" height="280"></canvas>
+<p class="cap">The y axis is a log scale (each step up = 10× more work). Classical = the best known method (GNFS). Shor = about (log N)³ gates. For 2048-bit RSA, classical is practically impossible, while Shor needs about 10¹⁰ gates but also a very large error-corrected quantum computer.</p>
+</section>
+
+<section id="route">
+<h2><span class="num">2</span>Delivery route optimization (TSP / VRP)</h2>
+<p>6 cities (city 0 = warehouse), so 5! = 120 possible routes. Three approaches: <span class="cl">brute force</span>, <span class="cl">greedy</span>, and <span class="qu">QAOA (simulated)</span>.</p>
+<div class="simple"><strong>In simple words</strong>
+<ol><li><b>Brute force</b> checks every possible route. Always right, but impossible for many cities.</li>
+<li><b>Greedy</b> always drives to the nearest unvisited city. Fast, but can miss the best route.</li>
+<li><b>QAOA</b> starts with every route equally likely. Each layer turns up the “volume” on short routes and turns down long ones, so when we measure, a short route is more likely to come out.</li></ol></div>
+<div class="controls"><button id="newC">New cities</button>
+<label>QAOA layers p: <select id="P"><option>1</option><option>2</option><option selected>3</option></select></label>
+<button id="runQ" class="q">Run QAOA</button></div>
+<div class="row">
+<canvas id="cmap" width="460" height="360"></canvas>
+<div class="log" id="rlog" style="min-height:300px"></div>
+</div>
+<p class="cap">Solid green = best route found. Dashed red = greedy route. Black dot = warehouse.</p>
+<h3>QAOA route probabilities (routes sorted from shortest to longest)</h3>
+<canvas id="cprob" width="900" height="260"></canvas>
+<p class="cap">At the start all 120 routes are equally likely (dashed line). After QAOA, the bars on the left (short routes) are taller. The green bar is the best route. A real quantum computer would need n² qubits for this, so 36 qubits for 6 cities.</p>
+<h3>How the search space grows with the number of cities</h3>
+<canvas id="croute" width="900" height="280"></canvas>
+<p class="cap">Log scale again. Checking every route grows as (n−1)!, which explodes. The best exact method (Held-Karp) grows as n²·2ⁿ. The number of qubits QAOA needs grows only as n², but fewer qubits does not automatically mean a faster answer.</p>
+
+<h3>Bonus: VRP with 2 vehicles</h3>
+<p>Same cities, but two vans leave the warehouse. Goal: make the slower van finish as early as possible. Brute force tries all 30 ways to split the customers and every visiting order inside each split.</p>
+<div class="simple"><strong>In simple words</strong>
+Now we have to decide two things: <b>which shops each van takes</b>, and <b>in what order</b>. That extra choice multiplies the possibilities again, which is why VRP is harder than TSP.</div>
+<div class="controls"><button id="runV">Solve VRP</button></div>
+<div class="row"><canvas id="cvrp" width="460" height="360"></canvas><div class="log" id="vlog" style="min-height:300px">Solving…</div></div>
+<p class="cap">QAOA and quantum annealers encode this same problem as a QUBO (a list of yes/no variables with a cost to minimise).</p>
+</section>
+
+<section id="anneal"><h2><span class="num">3</span>Quantum annealing demo (14-city route)</h2>
+<p>A quantum annealer starts with all routes in superposition and slowly lowers a transverse field Γ, so the system can tunnel between routes and settle in a low-cost one. Here it is simulated with <b>simulated quantum annealing</b> (SQA, path-integral Monte Carlo): 8 linked copies of the route whose link gets stronger as Γ falls. It is compared with ordinary <span class="cl">simulated annealing</span> (SA) and the exact best answer (Held-Karp).</p>
+<div class="simple"><strong>In simple words</strong>
+Picture a ball rolling over hills, looking for the lowest valley (the shortest route). <b>Simulated annealing</b> shakes the ball so it can jump over hills, and shakes less and less over time. <b>Quantum annealing</b> lets the ball <b>tunnel through</b> hills instead of climbing over them, which can help it escape a bad valley.</div>
+<div class="controls"><button id="runA" class="q">Run annealing</button></div>
+<div class="row"><canvas id="cann" width="460" height="360"></canvas><div class="log" id="alog" style="min-height:300px">Running…</div></div>
+<canvas id="cconv" width="900" height="260" style="margin-top:16px"></canvas>
+<p class="cap">Y axis: best route length found so far, in units of the average city distance. Lower is better, and the dashed line is the perfect answer. This is a classical simulation of the physics; a real annealer such as D-Wave uses physical qubits. Results change every run, and SQA does not always win.</p></section>
+
+<section id="scale"><h2><span class="num">4</span>Summary</h2>
+<div class="tw"><table><tr><th></th><th>Classical</th><th>Quantum</th></tr>
+<tr><td><b>Factoring</b></td><td>Sub-exponential (GNFS); 2048-bit is practically impossible</td><td>Shor: polynomial, proven exponential speedup</td></tr>
+<tr><td><b>TSP / VRP</b></td><td>NP-hard; exact methods cost (n−1)! or n²2ⁿ; heuristics are approximate</td><td>QAOA / annealing: heuristic, advantage not yet proven</td></tr>
+<tr><td><b>Hardware</b></td><td>Available today</td><td>Shor needs error-corrected qubits. QAOA runs small instances on today’s noisy (NISQ) devices</td></tr></table></div>
+<div class="simple"><strong>In one line</strong>Shor’s speedup is proven but waits for hardware. For routing, quantum methods are promising but not yet proven better.</div>
+</section>
+
+<section id="code"><h2><span class="num">5</span>Qiskit code (for a real device or simulator)</h2>
+<p class="mut">Tested with Qiskit 2.6 and qiskit-optimization 0.7.</p>
+<h3>QAOA for routing (QUBO → Ising)</h3>
+<pre># pip install qiskit qiskit-optimization
+import numpy as np
+from qiskit_optimization.applications import Tsp
+from qiskit_optimization.converters import QuadraticProgramToQubo
+from qiskit_optimization.minimum_eigensolvers import QAOA
+from qiskit_optimization.optimizers import COBYLA
+from qiskit.primitives import StatevectorSampler
+
+n = 4
+tsp = Tsp.create_random_instance(n, seed=1)
+qp = tsp.to_quadratic_program()          # n^2 binary vars
+qubo = QuadraticProgramToQubo().convert(qp)
+op, offset = qubo.to_ising()
+qaoa = QAOA(StatevectorSampler(seed=1), COBYLA(maxiter=100), reps=3)
+res = qaoa.compute_minimum_eigenvalue(op)
+bits = res.best_measurement["bitstring"]
+x = np.array([int(b) for b in bits[::-1]])   # Qiskit bit order is reversed
+print("QAOA route:", tsp.interpret(x))     # e.g. [0, 3, 2, 1]</pre>
+<h3>Shor (order finding, N = 15)</h3>
+<pre>from math import gcd
+from fractions import Fraction
+from qiskit import QuantumCircuit
+from qiskit.circuit.library import QFTGate
+from qiskit.primitives import StatevectorSampler
+
+def c_mult7_mod15(power):               # controlled "multiply by 7^power mod 15"
+    U = QuantumCircuit(4)
+    for _ in range(power):
+        U.swap(2, 3); U.swap(1, 2); U.swap(0, 1)
+        U.x(range(4))
+    return U.to_gate(label=f"7^{power}").control()
+
+t = 8                                   # counting qubits
+qc = QuantumCircuit(t + 4, t)
+qc.h(range(t)); qc.x(t)                 # second register starts at |1&gt;
+for k in range(t):
+    qc.append(c_mult7_mod15(2**k % 4), [k] + list(range(t, t + 4)))
+qc.append(QFTGate(t).inverse(), range(t))
+qc.measure(range(t), range(t))
+
+counts = StatevectorSampler(seed=1).run([qc], shots=64).result()[0].data.c.get_counts()
+for bits in counts:
+    r0 = Fraction(int(bits, 2) / 2**t).limit_denominator(15).denominator
+    r = next((m * r0 for m in range(1, 8) if pow(7, m * r0, 15) == 1), None)
+    if r and r % 2 == 0 and pow(7, r // 2, 15) != 14:
+        h = pow(7, r // 2, 15)
+        print("period r =", r, "-&gt; factors", gcd(h - 1, 15), gcd(h + 1, 15)); break
+# output: period r = 4 -&gt; factors 3 5</pre>
+<h3>Classical baseline (Held-Karp DP, exact)</h3>
+<pre>from functools import lru_cache
+def tsp(d):
+    n=len(d)
+    @lru_cache(None)
+    def f(mask,i):
+        if mask==(1&lt;&lt;n)-1: return d[i][0]
+        return min(d[i][j]+f(mask|1&lt;&lt;j,j) for j in range(n) if not mask&amp;1&lt;&lt;j)
+    return f(1,0)</pre></section>
+
+<section id="real"><h2><span class="num">6</span>Limitations</h2>
+<div class="warn">
+<p><b>Shor:</b> The maths is proven, but breaking 2048-bit RSA needs a fault-tolerant quantum computer (recent estimates are under about a million noisy qubits). Today’s devices have only factored tiny numbers like 15 or 21.</p>
+<p><b>Routing:</b> QAOA and quantum annealing (D-Wave) give <i>approximate</i> answers. There is no proven advantage yet, because classical solvers (OR-Tools, LKH) are very good. The honest description is “hybrid quantum-classical, ready for future hardware”, not “quantum is already better”.</p>
+<p>The real value of this project: explaining and comparing the mechanism behind both problems, plus a QUBO formulation that can run on any quantum backend.</p></div></section>
+</main>
+<footer>Quantum Lab · all simulations run locally in your browser</footer>
+<script>
+"use strict";
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function fit(c){const r=window.devicePixelRatio||1;if(!c._w){c._w=c.width;c._h=c.height;}c.width=c._w*r;c.height=c._h*r;const x=c.getContext("2d");x.setTransform(r,0,0,r,0,0);x.clearRect(0,0,c._w,c._h);return x}
+function axes(x,W,H,m,xl,yl){x.strokeStyle=css("--line");x.fillStyle=css("--mut");x.font="12px 'IBM Plex Mono',monospace";x.lineWidth=1;x.beginPath();x.moveTo(m.l,m.t);x.lineTo(m.l,H-m.b);x.lineTo(W-m.r,H-m.b);x.stroke();x.fillText(xl,W-m.r-x.measureText(xl).width,H-6);x.save();x.translate(14,m.t+x.measureText(yl).width+20);x.rotate(-Math.PI/2);x.fillText(yl,0,0);x.restore()}
+function legend(x,items,m){let px=m.l+12;items.forEach(([t,col])=>{x.fillStyle=col;x.fillRect(px,m.t+4,14,4);x.fillText(t,px+20,m.t+10);px+=x.measureText(t).width+44})}
+function lineChart(c,xs,series,xl,yl){const x=fit(c),W=c._w,H=c._h,m={l:64,r:16,t:22,b:30};axes(x,W,H,m,xl,yl);
+ let all=series.flatMap(s=>s.y),lo=Math.floor(Math.min(...all)),hi=Math.ceil(Math.max(...all));const X=i=>m.l+(W-m.l-m.r)*i/(xs.length-1),Y=v=>H-m.b-(H-m.t-m.b)*(v-lo)/(hi-lo||1);
+ x.textAlign="right";x.fillStyle=css("--mut");const step=Math.max(1,Math.ceil((hi-lo)/5));for(let v=lo;v<=hi;v+=step){x.strokeStyle=css("--line");x.globalAlpha=.5;x.beginPath();x.moveTo(m.l,Y(v));x.lineTo(W-m.r,Y(v));x.stroke();x.globalAlpha=1;x.fillText("10^"+v,m.l-6,Y(v)+4)}x.textAlign="left";
+ series.forEach(s=>{x.strokeStyle=s.col;x.lineWidth=2.5;x.beginPath();s.y.forEach((v,i)=>i?x.lineTo(X(i),Y(v)):x.moveTo(X(i),Y(v)));x.stroke()});
+ x.fillStyle=css("--mut");[0,Math.floor(xs.length/2),xs.length-1].forEach((i,k)=>{x.textAlign=["left","center","right"][k];x.fillText(xs[i],X(i),H-m.b+14)});x.textAlign="left";legend(x,series.map(s=>[s.n,s.col]),m)}
+function barChart(c,vals,hl,line,xl,yl){const x=fit(c),W=c._w,H=c._h,m={l:48,r:16,t:16,b:30};axes(x,W,H,m,xl,yl);const hi=Math.max(...vals,line)*1.1,bw=(W-m.l-m.r)/vals.length,Y=v=>H-m.b-(H-m.t-m.b)*v/hi;
+ vals.forEach((v,i)=>{x.fillStyle=hl.includes(i)?css("--qu"):css("--ac");x.globalAlpha=hl.includes(i)?1:.75;x.fillRect(m.l+i*bw,Y(v),Math.max(bw-.6,.8),H-m.b-Y(v))});x.globalAlpha=1;
+ if(line){x.strokeStyle=css("--cl");x.setLineDash([5,4]);x.beginPath();x.moveTo(m.l,Y(line));x.lineTo(W-m.r,Y(line));x.stroke();x.setLineDash([]);x.fillStyle=css("--cl");x.fillText("uniform / random guess",W-m.r-170,Y(line)-6)}}
+function gcd(a,b){while(b){[a,b]=[b,a%b]}return a}
+function pw(a,e,N){let r=1n,b=BigInt(a)%BigInt(N),E=BigInt(e),M=BigInt(N);while(E>0n){if(E&1n)r=r*b%M;b=b*b%M;E>>=1n}return Number(r)}
+const $=id=>document.getElementById(id);
+const busy=(id,fn)=>{const b=$(id);b.disabled=true;setTimeout(()=>{try{fn()}finally{b.disabled=false}},30)};
+// ---------- SHOR ----------
+function runShor(){const N=+$("N").value;let L=[];
+ let steps=0,f=0;for(let d=2;d*d<=N;d++){steps++;if(N%d==0){f=d;break}}
+ $("clog").textContent=`N = ${N}: try dividing by d = 2, 3, 4 … up to √N\nFound after ${steps} steps: ${f} × ${N/f}\n\nFor a 2048-bit N, √N ≈ 2¹⁰²⁴ steps.\nThat would never finish.`;
+ const Q=1<<Math.ceil(Math.log2(N*N)),cands=[];for(let a=2;a<N;a++)if(gcd(a,N)==1)cands.push(a);
+ const per=A=>{let R=1;while(pw(A,R,N)!=1)R++;return R};
+ const good=cands.filter(A=>{const R=per(A);return R%2==0&&pw(A,R/2,N)!=N-1});const a=good[Math.floor(Math.random()*good.length)],r=per(a);
+ L.push(`1. Random a = ${a}, gcd(a, N) = 1`);L.push(`2. Q = 2^m = ${Q} (N² ≤ Q < 2N²)\n   superposition Σ|x⟩|aˣ mod N⟩`);
+ const fx=[];for(let i=0;i<Q;i++)fx.push(pw(a,i,N));
+ const v=fx[Math.floor(Math.random()*Q)],S=[];fx.forEach((val,i)=>{if(val==v)S.push(i)});
+ L.push(`3. Measure the second register: ${v}\n   first register now holds only x ∈ {${S.slice(0,4).join(", ")}, …}`);
+ const P=new Float64Array(Q);let tot=0;for(let y=0;y<Q;y++){let re=0,im=0;for(const s of S){const t=2*Math.PI*((s*y)%Q)/Q;re+=Math.cos(t);im+=Math.sin(t)}P[y]=(re*re+im*im);tot+=P[y]}
+ for(let y=0;y<Q;y++)P[y]/=tot;
+ L.push(`4. Apply the QFT: spikes at multiples of Q/r`);
+ let y=0,u,acc;const res=[];
+ for(let tries=0;tries<30&&!res.length;tries++){u=Math.random();acc=0;for(y=0;y<Q;y++){acc+=P[y];if(acc>=u)break}
+  if(!y)continue;let p0=0,q0=1,p1=1,q1=0,n=y,d=Q;const dens=[];while(d){const k=Math.floor(n/d);[p0,p1]=[p1,k*p1+p0];[q0,q1]=[q1,k*q1+q0];[n,d]=[d,n-k*d];if(q1<N)dens.push(q1)}
+  for(const dn of dens){for(let k=1;k*dn<N;k++){if(pw(a,k*dn,N)==1&&k*dn%2==0){const h=pw(a,k*dn/2,N);if(h!=N-1){res.push([y,k*dn,gcd(h-1,N),gcd(h+1,N)]);break}}}if(res.length)break}}
+ if(res.length){const [yy,rr,g1,g2]=res[0];L.push(`5. Measure y = ${yy}, y/Q = ${yy}/${Q}\n   continued fractions → period r = ${rr}`);L.push(`6. gcd(a^(r/2) − 1, N) = ${g1}\n   gcd(a^(r/2) + 1, N) = ${g2}`);L.push(`   ✔ ${N} = ${g1} × ${g2}`)}else L.push("5. Unlucky measurement this time, run again");
+ $("slog").textContent=L.join("\n");
+ const cx=fit($("cfx")),W=900,H=240,m={l:48,r:16,t:22,b:30};axes(cx,W,H,m,"x","aˣ mod N");const nx=Math.min(Q,Math.max(48,r*4));
+ for(let i=0;i<nx;i++){const X=m.l+(W-m.l-m.r)*i/nx,Y=H-m.b-(H-m.t-m.b)*fx[i]/N;cx.fillStyle=fx[i]==v?css("--qu"):css("--ac");cx.beginPath();cx.arc(X,Y,fx[i]==v?4.5:3.2,0,7);cx.fill()}
+ cx.fillStyle=css("--ink");cx.font="600 13px 'Space Grotesk',sans-serif";cx.fillText(`a = ${a}: pattern repeats every r = ${r} steps (green = value ${v})`,m.l+10,m.t);
+ barChart($("cqft"),Array.from(P),res.length?[res[0][0]]:[],1/Q,"y (0 … Q)","probability")}
+$("runShor").onclick=()=>busy("runShor",runShor);$("N").onchange=runShor;
+(function(){const bits=[],cl=[],sh=[];for(let b=8;b<=2048;b+=40){bits.push(b);const ln=b*Math.LN2;cl.push(Math.log10(Math.exp(1.923*Math.cbrt(ln)*Math.pow(Math.log(ln),2/3))));sh.push(Math.log10(b**3))}lineChart($("cfac"),bits,[{n:"Classical (GNFS)",y:cl,col:css("--cl")},{n:"Shor (log N)³",y:sh,col:css("--qu")}],"bits of N","steps")})();
+// ---------- ROUTING ----------
+let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647};
+let C=[],D=[],perms=[],cost=[],nbrs=[],n=6;
+function perm(a){if(a.length<=1)return[a];const o=[];a.forEach((v,i)=>perm(a.slice(0,i).concat(a.slice(i+1))).forEach(p=>o.push([v,...p])));return o}
+function dist(rt){let s=0,p=0;for(const c of rt){s+=D[p][c];p=c}return s+D[p][0]}
+function dots(x){C.forEach((p,i)=>{x.fillStyle=i?css("--ac"):css("--ink");x.beginPath();x.arc(p[0],p[1],i?9:12,0,7);x.fill();x.fillStyle=i?"#fff":css("--card");x.font="bold 11px sans-serif";x.textAlign="center";x.fillText(i,p[0],p[1]+4);x.textAlign="left"})}
+function newCities(){C=[];for(let i=0;i<n;i++)C.push([30+rnd()*400,30+rnd()*300]);D=C.map(a=>C.map(b=>Math.hypot(a[0]-b[0],a[1]-b[1])));
+ const t0=performance.now();perms=perm([1,2,3,4,5]);cost=perms.map(dist);const tb=performance.now()-t0;
+ const key=p=>p.join("");const idx=new Map(perms.map((p,i)=>[key(p),i]));nbrs=perms.map(p=>{const o=[];for(let i=0;i<p.length-1;i++){const q=p.slice();[q[i],q[i+1]]=[q[i+1],q[i]];o.push(idx.get(key(q)))}return o});
+ const best=cost.indexOf(Math.min(...cost));let cur=0,vis=new Set([0]),g=[];while(g.length<n-1){let bj=-1;for(let j=0;j<n;j++)if(!vis.has(j)&&(bj<0||D[cur][j]<D[cur][bj]))bj=j;vis.add(bj);g.push(bj);cur=bj}
+ window.S={best,greedy:g,tb,avg:cost.reduce((a,b)=>a+b)/cost.length,qr:null};draw(perms[best]);log();fit($("cprob"))}
+function draw(rt){const x=fit($("cmap"));const path=(r,col,w,dash)=>{x.strokeStyle=col;x.lineWidth=w;x.setLineDash(dash||[]);x.beginPath();x.moveTo(...C[0]);r.forEach(c=>x.lineTo(...C[c]));x.lineTo(...C[0]);x.stroke();x.setLineDash([])};
+ path(rt,css("--qu"),3.5);path(S.greedy,css("--cl"),2,[6,5]);dots(x)}
+function log(){const f=v=>v.toFixed(0);let t=`Brute force: checked all 120 routes in ${S.tb.toFixed(1)} ms\n  best length = ${f(cost[S.best])}\n\nGreedy (nearest neighbour):\n  length = ${f(dist(S.greedy))}  (dashed red)\n\nRandom route, on average = ${f(S.avg)}\n`;
+ if(S.qr)t+=`\nQAOA p = ${S.qr.p} (simulated):\n  expected length = ${f(S.qr.E)}\n  chance of the best route = ${(S.qr.po*100).toFixed(1)}%\n    (random guess: ${(100/120).toFixed(1)}%)\n  most likely route = 0→${perms[S.qr.top].join("→")}→0 (${f(cost[S.qr.top])})\n\nNote: with ${n} cities a normal computer is still\ninstant. The gap only matters when n gets large.`;$("rlog").textContent=t}
+function qaoa(p){const M=perms.length,lo=Math.min(...cost),sc=Math.max(...cost)-lo,c=cost.map(v=>(v-lo)/sc);
+ const ev=(g,b,full)=>{let re=new Float64Array(M).fill(1/Math.sqrt(M)),im=new Float64Array(M);
+  for(let l=0;l<p;l++){for(let i=0;i<M;i++){const t=-g[l]*c[i]*6,cr=Math.cos(t),ci=Math.sin(t),r0=re[i];re[i]=r0*cr-im[i]*ci;im[i]=r0*ci+im[i]*cr}
+   let tr=re.slice(),ti=im.slice(),sr=re.slice(),si=im.slice();for(let k=1;k<26;k++){const nr=new Float64Array(M),ni=new Float64Array(M);for(let i=0;i<M;i++){let a=0,d=0;for(const j of nbrs[i]){a+=tr[j];d+=ti[j]}nr[i]=a;ni[i]=d}
+    for(let i=0;i<M;i++){const a=nr[i],d=ni[i];tr[i]=(b[l]*d)/k;ti[i]=(-b[l]*a)/k;sr[i]+=tr[i];si[i]+=ti[i]}}
+   re=sr;im=si}
+  const pr=Array.from(re,(r,i)=>r*r+im[i]*im[i]);return full?pr:pr.reduce((s,q,i)=>s+q*c[i],0)};
+ let bg=Array.from({length:p},()=>Math.random()*1.5),bb=Array.from({length:p},()=>Math.random()*0.8),be=ev(bg,bb);
+ for(let it=0;it<260;it++){const s=it<130?0.5:0.12,g=bg.map(v=>v+(Math.random()-.5)*s),b=bb.map(v=>v+(Math.random()-.5)*s),e=ev(g,b);if(e<be){be=e;bg=g;bb=b}}
+ return{pr:ev(bg,bb,true),E:lo+sc*be}}
+function runQAOA(){const p=+$("P").value,r=qaoa(p);const top=r.pr.indexOf(Math.max(...r.pr));S.qr={p,E:r.E,po:r.pr[S.best],top};
+ const order=cost.map((v,i)=>i).sort((a,b)=>cost[a]-cost[b]);barChart($("cprob"),order.map(i=>r.pr[i]),[0],1/120,"routes (shortest → longest)","probability");draw(perms[top]);log()}
+$("runQ").onclick=()=>{$("rlog").textContent="Optimising QAOA angles…";busy("runQ",runQAOA)};
+function runVRP(){const idx=[1,2,3,4,5],tour=s=>{let b=1e9,br=null;for(const p of perm(s)){const d=dist(p);if(d<b){b=d;br=p}}return[b,br]};
+ let best=1e9,A,B,dA,dB,tried=0;for(let m=1;m<31;m++){const a=idx.filter((_,i)=>m>>i&1),b=idx.filter((_,i)=>!(m>>i&1)),[da,ra]=tour(a),[db,rb]=tour(b);tried++;const w=Math.max(da,db);if(w<best){best=w;A=ra;B=rb;dA=da;dB=db}}
+ const x=fit($("cvrp")),path=(r,col)=>{x.strokeStyle=col;x.lineWidth=3.5;x.beginPath();x.moveTo(...C[0]);r.forEach(c=>x.lineTo(...C[c]));x.lineTo(...C[0]);x.stroke()};path(A,css("--qu"));path(B,css("--cl"));dots(x);
+ const single=cost[S.best];$("vlog").textContent=`Splits tried: ${tried}\n\nVan 1 (green): 0→${A.join("→")}→0 = ${dA.toFixed(0)}\nVan 2 (red):   0→${B.join("→")}→0 = ${dB.toFixed(0)}\n\nFinish time with 2 vans: ${best.toFixed(0)}\nFinish time with 1 van:  ${single.toFixed(0)}\nTime saved: ${(100*(1-best/single)).toFixed(0)}%\n\nWith 20 customers and 3 vans, the number of\nsplits alone is about 3²⁰ ≈ 3.5 billion,\nbefore choosing the order inside each one.`}
+$("runV").onclick=()=>busy("runV",runVRP);
+$("newC").onclick=()=>{seed=Math.floor(Math.random()*1e6)+1;newCities();runVRP();$("rlog").textContent+="\nPress Run QAOA to try the quantum method.";};
+newCities();
+(function(){const ns=[],a=[],b=[],q=[];for(let k=5;k<=30;k++){ns.push(k);let f=0;for(let i=2;i<k;i++)f+=Math.log10(i);a.push(f);b.push(Math.log10(k*k)+k*Math.log10(2));q.push(Math.log10(k*k))}
+ lineChart($("croute"),ns,[{n:"(n−1)! all routes",y:a,col:css("--cl")},{n:"n²·2ⁿ exact DP",y:b,col:css("--ac")},{n:"n² qubits (QAOA)",y:q,col:css("--qu")}],"cities n","count")})();
+// ---------- ANNEALING ----------
+function runAnneal(){
+ const n=14,R=8,SW=300,P=[];for(let i=0;i<n;i++)P.push([30+Math.random()*400,30+Math.random()*300]);
+ const d=(a,b)=>Math.hypot(P[a][0]-P[b][0],P[a][1]-P[b][1]);let u=0;for(let i=0;i<n;i++)for(let j=0;j<n;j++)u+=d(i,j);u/=n*n;
+ const len=t=>{let s=0;for(let i=0;i<n;i++)s+=d(t[i],t[(i+1)%n]);return s/u};
+ const sh=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+ const base=[...Array(n).keys()],pick=()=>{const i=Math.floor(Math.random()*n);let j=Math.floor(Math.random()*(n-1));if(j>=i)j++;return[i,j]};
+ const full=1<<n,dp=Array.from({length:full},()=>new Float64Array(n).fill(1e9));dp[1][0]=0;
+ for(let m=1;m<full;m+=2)for(let i=0;i<n;i++){if(!(m>>i&1)||dp[m][i]>=1e9)continue;for(let j=1;j<n;j++){if(m>>j&1)continue;const nm=m|1<<j,v=dp[m][i]+d(i,j);if(v<dp[nm][j])dp[nm][j]=v}}
+ let opt=1e9;for(let i=1;i<n;i++)opt=Math.min(opt,dp[full-1][i]+d(i,0));opt/=u;
+ const vis=new Set([0]),g=[0];while(g.length<n){let c=g[g.length-1],b=-1;for(let j=0;j<n;j++)if(!vis.has(j)&&(b<0||d(c,j)<d(c,b)))b=j;vis.add(b);g.push(b)}const gl=len(g);
+ let t=sh(base.slice()),L=len(t),sb=L;const sa=[];
+ for(let s=0;s<SW;s++){const T=1.5*Math.pow(0.03/1.5,s/SW);for(let k=0;k<R*n;k++){const[i,j]=pick(),q=t.slice();[q[i],q[j]]=[q[j],q[i]];const l2=len(q),dE=l2-L;if(dE<0||Math.random()<Math.exp(-dE/T)){t=q;L=l2;if(L<sb)sb=L}}sa.push(sb)}
+ const reps=Array.from({length:R},()=>sh(base.slice())),Ls=reps.map(len),T=0.15;let qb=1e9,bt=null;const sq=[];
+ for(let s=0;s<SW;s++){const G=1.5-1.49*s/SW,J=-0.5*T*R*Math.log(Math.tanh(G/(T*R)));
+  for(let r=0;r<R;r++){const tr=reps[r],nb=[reps[(r+1)%R],reps[(r+R-1)%R]];for(let k=0;k<n;k++){const[i,j]=pick();let dh=0;for(const o of nb)dh+=(tr[j]!=o[i])+(tr[i]!=o[j])-(tr[i]!=o[i])-(tr[j]!=o[j]);
+   const q=tr.slice();[q[i],q[j]]=[q[j],q[i]];const l2=len(q),dE=(l2-Ls[r])+J*dh;if(dE<0||Math.random()<Math.exp(-dE/T)){reps[r]=q;Ls[r]=l2;if(l2<qb){qb=l2;bt=q}}}}
+  sq.push(qb)}
+ const x=fit($("cann"));x.strokeStyle=css("--qu");x.lineWidth=3;x.beginPath();bt.forEach((c,i)=>i?x.lineTo(...P[c]):x.moveTo(...P[c]));x.closePath();x.stroke();P.forEach(p=>{x.fillStyle=css("--ac");x.beginPath();x.arc(p[0],p[1],7,0,7);x.fill()});
+ const y=fit($("cconv")),W=900,H=260,m={l:48,r:16,t:22,b:30};axes(y,W,H,m,"sweep","length");const lo=opt*0.97,hi=Math.max(sa[0],sq[0]),X=i=>m.l+(W-m.l-m.r)*i/(SW-1),Y=v=>H-m.b-(H-m.t-m.b)*(v-lo)/(hi-lo);
+ [[sa,css("--cl")],[sq,css("--qu")]].forEach(s=>{y.strokeStyle=s[1];y.lineWidth=2.5;y.beginPath();s[0].forEach((v,i)=>i?y.lineTo(X(i),Y(v)):y.moveTo(X(i),Y(v)));y.stroke()});
+ legend(y,[["Simulated annealing",css("--cl")],["Simulated quantum annealing",css("--qu")]],m);
+ y.strokeStyle=css("--mut");y.setLineDash([5,4]);y.beginPath();y.moveTo(m.l,Y(opt));y.lineTo(W-m.r,Y(opt));y.stroke();y.setLineDash([]);y.fillStyle=css("--mut");y.fillText("exact best answer",W-150,Y(opt)-6);
+ const f=v=>v.toFixed(2),pc=v=>Math.max(0,100*(v/opt-1)).toFixed(1);$("alog").textContent=`14 cities → 13!/2 ≈ 3.1 billion possible tours\n\nExact best (Held-Karp):      ${f(opt)}\nGreedy:                      ${f(gl)} (+${(100*(gl/opt-1)).toFixed(0)}%)\nSimulated annealing:         ${f(sb)} (+${pc(sb)}%)\nSimulated quantum annealing: ${f(qb)} (+${pc(qb)}%)\n\nGreen map = best SQA tour.\nHeld-Karp needs about 2¹⁴·14² steps here,\nbut about 2⁶⁰ at 60 cities.`}
+$("runA").onclick=()=>{$("alog").textContent="Running…";busy("runA",runAnneal)};
+// run everything once so no chart is empty
+runShor();runVRP();
+setTimeout(()=>{$("rlog").textContent+="\nOptimising QAOA angles…";runQAOA()},60);
+setTimeout(runAnneal,200);
+</script></body></html>
